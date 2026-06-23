@@ -18,7 +18,15 @@ export async function checkWhitelist(email) {
   const docRef = doc(db, 'whitelist', email.toLowerCase().trim());
   const docSnap = await getDoc(docRef);
   if (docSnap.exists()) {
-    return docSnap.data();
+    const data = docSnap.data();
+    // Normaliza a role para evitar problemas com letras maiúsculas/minúsculas ou campos nulos
+    let role = 'colaborador';
+    const keys = Object.keys(data);
+    const roleKey = keys.find(k => k.toLowerCase() === 'role' || k.toLowerCase() === 'perfil');
+    if (roleKey && data[roleKey]) {
+      role = String(data[roleKey]).toLowerCase().trim();
+    }
+    return { ...data, role };
   }
   return null;
 }
