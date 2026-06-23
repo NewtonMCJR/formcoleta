@@ -46,14 +46,14 @@ async function handleRoute() {
       if (currentUserRole === 'admin') {
         navigateTo('admin');
       } else {
-        navigateTo('formulario');
+        navigateTo('inicio');
       }
       return;
     }
 
     // Se é colaborador e tenta acessar tela admin, redireciona
     if (hash === 'admin' && currentUserRole !== 'admin') {
-      navigateTo('formulario');
+      navigateTo('inicio');
       return;
     }
   }

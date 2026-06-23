@@ -8,6 +8,7 @@ export async function renderAdmin(container, user, role) {
   let activeTab = 'registros'; // 'registros' ou 'whitelist'
   let searchWord = '';
   let filterType = '';
+  let filterStatus = ''; // Filtro por status
   
   let registrosList = [];
   let whitelistList = [];
@@ -43,6 +44,8 @@ export async function renderAdmin(container, user, role) {
         situacao_atual: 'Ativo',
         e_docente: false,
         orientador: 'Dr. João Medeiros',
+        status: 'em_analise', // Inicializa como 'em_analise' para testar a revisão
+        pendencias: '',
         lastUpdated: new Date().toISOString()
       }
     }));
@@ -74,6 +77,20 @@ export async function renderAdmin(container, user, role) {
         text: 'Não foi possível ler as informações do Firebase. Verifique suas regras e conexão.',
         confirmButtonColor: '#ef4444'
       });
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'deferido':
+        return `<span class="bg-green-50 text-green-700 border border-green-100 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Deferido</span>`;
+      case 'indeferido':
+        return `<span class="bg-red-50 text-red-700 border border-red-100 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Indeferido</span>`;
+      case 'em_analise':
+        return `<span class="bg-blue-50 text-blue-700 border border-blue-100 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse">Em Análise</span>`;
+      case 'editando':
+      default:
+        return `<span class="bg-amber-50 text-amber-700 border border-amber-100 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">Rascunho</span>`;
     }
   };
 
@@ -171,7 +188,9 @@ export async function renderAdmin(container, user, role) {
       const email = (reg.email || '').toLowerCase();
       const matchWord = name.includes(searchWord.toLowerCase()) || email.includes(searchWord.toLowerCase());
       const matchType = filterType === '' || reg.tipo_integrante === filterType;
-      return matchWord && matchType;
+      const regStatus = reg.status || 'editando';
+      const matchStatus = filterStatus === '' || regStatus === filterStatus;
+      return matchWord && matchType && matchStatus;
     });
 
     return `
@@ -181,7 +200,7 @@ export async function renderAdmin(container, user, role) {
           <input type="text" id="searchBar" value="${searchWord}" placeholder="Buscar por nome ou e-mail..."
             class="w-full rounded-xl border border-slate-200 p-3 bg-slate-50 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition duration-150 text-sm">
         </div>
-        <div class="w-full md:w-64">
+        <div class="w-full md:w-56">
           <select id="filterTypeSelect"
             class="w-full rounded-xl border border-slate-200 p-3 bg-slate-50 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition duration-150 text-sm">
             <option value="">Todos os Integrantes</option>
@@ -190,6 +209,16 @@ export async function renderAdmin(container, user, role) {
             <option value="aluno_externo" ${filterType === 'aluno_externo' ? 'selected' : ''}>Aluno Externo</option>
             <option value="bolsista" ${filterType === 'bolsista' ? 'selected' : ''}>Bolsista</option>
             <option value="terceirizado" ${filterType === 'terceirizado' ? 'selected' : ''}>Terceirizado</option>
+          </select>
+        </div>
+        <div class="w-full md:w-52">
+          <select id="filterStatusSelect"
+            class="w-full rounded-xl border border-slate-200 p-3 bg-slate-50 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition duration-150 text-sm">
+            <option value="">Todos os Status</option>
+            <option value="editando" ${filterStatus === 'editando' ? 'selected' : ''}>Rascunho</option>
+            <option value="em_analise" ${filterStatus === 'em_analise' ? 'selected' : ''}>Em Análise</option>
+            <option value="deferido" ${filterStatus === 'deferido' ? 'selected' : ''}>Deferido</option>
+            <option value="indeferido" ${filterStatus === 'indeferido' ? 'selected' : ''}>Indeferido</option>
           </select>
         </div>
       </div>
@@ -202,7 +231,7 @@ export async function renderAdmin(container, user, role) {
               <th class="p-4 px-6">Nome Completo</th>
               <th class="p-4 px-6">E-mail</th>
               <th class="p-4 px-6">Integrante</th>
-              <th class="p-4 px-6">Telefone</th>
+              <th class="p-4 px-6 text-center">Status</th>
               <th class="p-4 px-6">Atualizado em</th>
               <th class="p-4 px-6 text-right">Ações</th>
             </tr>
@@ -217,7 +246,7 @@ export async function renderAdmin(container, user, role) {
                 <td class="p-4 px-6 font-bold text-slate-900">${reg.nome_completo || 'Não informado'}</td>
                 <td class="p-4 px-6 font-mono text-xs">${reg.email}</td>
                 <td class="p-4 px-6"><span class="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full capitalize">${reg.tipo_integrante || '-'}</span></td>
-                <td class="p-4 px-6">${reg.telefone || '-'}</td>
+                <td class="p-4 px-6 text-center">${getStatusBadge(reg.status)}</td>
                 <td class="p-4 px-6 text-slate-500 text-xs">${reg.lastUpdated ? new Date(reg.lastUpdated).toLocaleString('pt-BR') : '-'}</td>
                 <td class="p-4 px-6 text-right">
                   <button data-email="${reg.email}" class="btnVerDetalhes bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition duration-150">
@@ -325,6 +354,14 @@ export async function renderAdmin(container, user, role) {
       const filterSelect = document.getElementById('filterTypeSelect');
       filterSelect.addEventListener('change', (e) => {
         filterType = e.target.value;
+        container.querySelector('tbody').outerHTML = getNewTableBody();
+        bindDetailButtons();
+      });
+
+      // Filtro por status
+      const filterStatusSelect = document.getElementById('filterStatusSelect');
+      filterStatusSelect.addEventListener('change', (e) => {
+        filterStatus = e.target.value;
         container.querySelector('tbody').outerHTML = getNewTableBody();
         bindDetailButtons();
       });
@@ -446,7 +483,9 @@ export async function renderAdmin(container, user, role) {
       const email = (reg.email || '').toLowerCase();
       const matchWord = name.includes(searchWord.toLowerCase()) || email.includes(searchWord.toLowerCase());
       const matchType = filterType === '' || reg.tipo_integrante === filterType;
-      return matchWord && matchType;
+      const regStatus = reg.status || 'editando';
+      const matchStatus = filterStatus === '' || regStatus === filterStatus;
+      return matchWord && matchType && matchStatus;
     });
 
     return `
@@ -460,7 +499,7 @@ export async function renderAdmin(container, user, role) {
             <td class="p-4 px-6 font-bold text-slate-900">${reg.nome_completo || 'Não informado'}</td>
             <td class="p-4 px-6 font-mono text-xs">${reg.email}</td>
             <td class="p-4 px-6"><span class="bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 rounded-full capitalize">${reg.tipo_integrante || '-'}</span></td>
-            <td class="p-4 px-6">${reg.telefone || '-'}</td>
+            <td class="p-4 px-6 text-center">${getStatusBadge(reg.status)}</td>
             <td class="p-4 px-6 text-slate-500 text-xs">${reg.lastUpdated ? new Date(reg.lastUpdated).toLocaleString('pt-BR') : '-'}</td>
             <td class="p-4 px-6 text-right">
               <button data-email="${reg.email}" class="btnVerDetalhes bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-3.5 py-2 rounded-lg transition duration-150">
@@ -486,12 +525,77 @@ export async function renderAdmin(container, user, role) {
     });
   };
 
+  const updateRegistroStatus = async (colabEmail, newStatus, currentReg, pendenciasText = '') => {
+    Swal.fire({
+      title: 'Atualizando cadastro...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const updatedReg = { 
+        ...currentReg, 
+        status: newStatus, 
+        pendencias: pendenciasText,
+        lastUpdated: new Date().toISOString()
+      };
+
+      if (isConfigured) {
+        await setDoc(doc(db, 'coletas', colabEmail), updatedReg);
+      } else {
+        const savedReg = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
+        savedReg[colabEmail] = updatedReg;
+        localStorage.setItem('all_demo_coletas', JSON.stringify(savedReg));
+        
+        // Atualiza a cópia local do formulário para o colaborador no modo demo
+        localStorage.setItem(`demo_coleta_${colabEmail}`, JSON.stringify(updatedReg));
+      }
+
+      await fetchData();
+      
+      await Swal.fire({
+        icon: 'success',
+        title: 'Status Atualizado!',
+        text: `O cadastro de ${updatedReg.nome_completo || colabEmail} foi definido como ${newStatus.toUpperCase()}.`,
+        confirmButtonColor: '#2563eb'
+      });
+      
+      renderUI();
+
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Ops! Ocorreu um erro',
+        text: error.message || 'Erro ao alterar status.',
+        confirmButtonColor: '#ef4444'
+      });
+    }
+  };
+
   const showDetailModal = (reg) => {
+    const isPendingReview = reg.status === 'em_analise';
+    const hasPendencies = reg.status === 'indeferido';
+
     Swal.fire({
       title: `<span class="text-lg font-extrabold text-slate-900">Ficha Cadastral: ${reg.nome_completo || 'Colaborador'}</span>`,
       html: `
-        <div class="text-left text-sm max-h-[70vh] overflow-y-auto pr-2 space-y-6 pt-4 font-sans leading-relaxed">
+        <div class="text-left text-sm max-h-[60vh] overflow-y-auto pr-2 space-y-6 pt-4 font-sans leading-relaxed">
           
+          <!-- Status Banner -->
+          <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+            <span class="font-bold text-slate-500">Status do Cadastro:</span>
+            <span>${getStatusBadge(reg.status)}</span>
+          </div>
+
+          <!-- Pendências atuais (se houver) -->
+          ${hasPendencies && reg.pendencias ? `
+            <div class="p-4 bg-red-50 border border-red-100 text-red-900 rounded-xl text-xs">
+              <span class="font-bold block text-red-950 mb-1">Pendências Apontadas Anteriormente:</span>
+              <p class="whitespace-pre-line">${reg.pendencias}</p>
+            </div>
+          ` : ''}
+
           <!-- Secção 1 -->
           <div>
             <h4 class="font-bold text-blue-700 text-xs uppercase tracking-wider mb-2 border-b pb-1">1. Identificação e Contato</h4>
@@ -546,11 +650,72 @@ export async function renderAdmin(container, user, role) {
             </div>
           </div>
 
+          <!-- Botões de Homologação caso esteja em Análise -->
+          ${isPendingReview ? `
+            <div class="flex gap-3 justify-end pt-4 border-t border-slate-100">
+              <button id="btnModalIndeferir" class="bg-red-500 hover:bg-red-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition duration-150 shadow-md shadow-red-100">
+                Indeferir (Solicitar Correção)
+              </button>
+              <button id="btnModalDeferir" class="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition duration-150 shadow-md shadow-green-100">
+                Deferir (Aprovar Cadastro)
+              </button>
+            </div>
+          ` : ''}
+
         </div>
       `,
       width: '600px',
+      showConfirmButton: !isPendingReview, // Oculta botão fechar se mostrar botões de homologação
       confirmButtonColor: '#2563eb',
-      confirmButtonText: 'Fechar Ficha'
+      confirmButtonText: 'Fechar Ficha',
+      didOpen: () => {
+        if (isPendingReview) {
+          // Evento Deferir
+          document.getElementById('btnModalDeferir').addEventListener('click', async () => {
+            const confirm = await Swal.fire({
+              title: 'Deferir Cadastro?',
+              text: 'Isso aprovará e homologará em definitivo as informações do colaborador.',
+              icon: 'question',
+              showCancelButton: true,
+              confirmButtonText: 'Sim, deferir',
+              cancelButtonText: 'Cancelar',
+              confirmButtonColor: '#16a34a',
+              cancelButtonColor: '#94a3b8'
+            });
+
+            if (confirm.isConfirmed) {
+              await updateRegistroStatus(reg.email, 'deferido', reg);
+            }
+          });
+
+          // Evento Indeferir com Pendências
+          document.getElementById('btnModalIndeferir').addEventListener('click', async () => {
+            const { value: text, isConfirmed } = await Swal.fire({
+              title: 'Apontar Pendências',
+              input: 'textarea',
+              inputLabel: 'Descreva detalhadamente o que o colaborador precisa corrigir no cadastro:',
+              inputPlaceholder: 'Ex: O anexo do diploma está ilegível. Favor preencher o campo RG corretamente.',
+              inputAttributes: {
+                'aria-label': 'Descreva detalhadamente o que o colaborador precisa corrigir no cadastro'
+              },
+              showCancelButton: true,
+              confirmButtonText: 'Solicitar Correção',
+              cancelButtonText: 'Voltar',
+              confirmButtonColor: '#ef4444',
+              cancelButtonColor: '#94a3b8',
+              inputValidator: (value) => {
+                if (!value) {
+                  return 'Você precisa digitar o motivo da pendência!';
+                }
+              }
+            });
+
+            if (isConfirmed && text) {
+              await updateRegistroStatus(reg.email, 'indeferido', reg, text);
+            }
+          });
+        }
+      }
     });
   };
 

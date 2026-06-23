@@ -8,6 +8,8 @@ import { navigateTo } from '../router';
 export async function renderForm(container, user, role) {
   let isSaving = false;
   let existingData = null;
+  let status = 'nao_iniciado';
+  let pendencias = '';
 
   // Carrega dados existentes
   try {
@@ -16,15 +18,57 @@ export async function renderForm(container, user, role) {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         existingData = docSnap.data();
+        status = existingData.status || 'editando';
+        pendencias = existingData.pendencias || '';
       }
     } else {
       const saved = localStorage.getItem(`demo_coleta_${user.email}`);
       if (saved) {
         existingData = JSON.parse(saved);
+        status = existingData.status || 'editando';
+        pendencias = existingData.pendencias || '';
       }
     }
   } catch (error) {
     console.error('Erro ao carregar dados do usuário:', error);
+  }
+
+  const isLocked = status === 'em_analise' || status === 'deferido';
+
+  // Define o banner de status no topo do form
+  let bannerHTML = '';
+  if (status === 'indeferido') {
+    bannerHTML = `
+      <div class="mb-8 p-6 bg-red-50 border border-red-200 rounded-3xl text-sm text-red-800 space-y-2">
+        <span class="font-extrabold flex items-center gap-2 text-lg text-red-950">
+          <svg class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+          Atenção: Necessita de Correções
+        </span>
+        <p class="whitespace-pre-line font-medium leading-relaxed bg-white p-4 rounded-xl border border-red-100 text-red-900">${pendencias || 'Por favor revise os campos apontados pelo administrador.'}</p>
+      </div>
+    `;
+  } else if (status === 'em_analise') {
+    bannerHTML = `
+      <div class="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-3xl text-sm text-blue-800">
+        <span class="font-extrabold flex items-center gap-2 text-lg text-blue-950">
+          <svg class="w-6 h-6 text-blue-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+          </svg>
+          Cadastro em Análise
+        </span>
+        <p class="mt-2 font-medium">Este formulário está em fase de análise pela administração e não pode ser editado no momento.</p>
+      </div>
+    `;
+  } else if (status === 'deferido') {
+    bannerHTML = `
+      <div class="mb-8 p-6 bg-green-50 border border-green-200 rounded-3xl text-sm text-green-800">
+        <span class="font-extrabold flex items-center gap-2 text-lg text-green-950">
+          <svg class="w-6 h-6 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+          Cadastro Homologado (Deferido)
+        </span>
+        <p class="mt-2 font-medium">Seu cadastro foi revisado e aprovado. As informações estão salvas de forma definitiva.</p>
+      </div>
+    `;
   }
 
   container.innerHTML = `
@@ -36,6 +80,12 @@ export async function renderForm(container, user, role) {
         <span class="text-xs bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full font-semibold capitalize">${role}</span>
       </div>
       <div class="flex items-center gap-3">
+        <button id="btnVoltarInicio" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm px-4 py-2 rounded-xl transition duration-150 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          Início
+        </button>
         ${role === 'admin' ? `
           <button id="btnIrAdmin" class="bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-sm px-4 py-2 rounded-xl transition duration-150 flex items-center gap-1.5">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -55,6 +105,10 @@ export async function renderForm(container, user, role) {
 
     <!-- Main Container -->
     <div class="max-w-5xl mx-auto bg-white p-8 md:p-12 rounded-3xl shadow-2xl shadow-slate-200 border border-slate-100">
+      
+      <!-- Banner Informativo superior se aplicável -->
+      ${bannerHTML}
+
       <header class="mb-12 pb-6 border-b border-slate-100 flex items-center gap-4">
         <div class="p-3 bg-blue-600 text-white rounded-2xl">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -216,7 +270,7 @@ export async function renderForm(container, user, role) {
         </section>
 
         <!-- 5. Informações do Coleta -->
-        <section class="bg-blue-50 p-8 rounded-2xl border border-blue-100 space-y-6">
+        <section class="space-y-6 bg-blue-50 p-8 rounded-2xl border border-blue-100">
           <div class="flex items-center gap-3 border-b border-blue-100 pb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-blue-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -264,22 +318,34 @@ export async function renderForm(container, user, role) {
 
         <!-- Footer Buttons -->
         <footer class="flex justify-end gap-4 pt-10 border-t border-slate-100 mt-12">
-          <button type="button" id="btnCancelar"
-            class="bg-slate-100 text-slate-700 px-8 py-4 rounded-xl font-bold hover:bg-slate-200 transition duration-150 shadow-sm">
-            Cancelar
-          </button>
-          <button type="submit" id="btnSalvar"
-            class="bg-blue-600 text-white px-10 py-4 rounded-xl font-bold hover:bg-blue-700 transition duration-150 shadow-lg shadow-blue-200 transform hover:-translate-y-0.5">
-            Salvar Cadastro
-          </button>
+          ${isLocked ? `
+            <button type="button" id="btnVoltarInicioFooter"
+              class="bg-blue-600 text-white px-10 py-4 rounded-xl font-bold hover:bg-blue-700 transition duration-150 shadow-lg shadow-blue-200 transform hover:-translate-y-0.5">
+              Voltar ao Início
+            </button>
+          ` : `
+            <button type="button" id="btnCancelar"
+              class="bg-slate-100 text-slate-700 px-8 py-4 rounded-xl font-bold hover:bg-slate-200 transition duration-150 shadow-sm">
+              Cancelar
+            </button>
+            <button type="button" id="btnSalvarRascunho"
+              class="bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-xl font-bold transition duration-150 shadow-lg shadow-amber-100 transform hover:-translate-y-0.5">
+              Salvar Rascunho
+            </button>
+            <button type="submit" id="btnEnviar"
+              class="bg-blue-600 text-white px-10 py-4 rounded-xl font-bold hover:bg-blue-700 transition duration-150 shadow-lg shadow-blue-200 transform hover:-translate-y-0.5">
+              Enviar para Análise
+            </button>
+          `}
         </footer>
 
       </form>
     </div>
   `;
 
-  // Preenche dados existentes se houver
   const form = document.getElementById('coletaForm');
+
+  // Preenche dados existentes se houver
   if (existingData) {
     Object.keys(existingData).forEach(key => {
       const field = form.elements[key];
@@ -291,6 +357,29 @@ export async function renderForm(container, user, role) {
         }
       }
     });
+  }
+
+  // Se o formulário estiver bloqueado (em análise ou deferido), desabilita tudo
+  if (isLocked) {
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(el => {
+      el.disabled = true;
+      if (el.tagName === 'INPUT' && el.type !== 'checkbox') {
+        el.classList.add('bg-slate-50', 'text-slate-500', 'cursor-not-allowed');
+      }
+    });
+    // Oculta área de anexo de arquivo
+    const fileWrapper = form.querySelector('input[type="file"]').closest('.w-full.rounded-xl.border');
+    if (fileWrapper) {
+      fileWrapper.style.display = 'none';
+    }
+  }
+
+  // Evento Navegar para Início
+  document.getElementById('btnVoltarInicio').addEventListener('click', () => navigateTo('inicio'));
+  
+  if (isLocked) {
+    document.getElementById('btnVoltarInicioFooter').addEventListener('click', () => navigateTo('inicio'));
   }
 
   // Evento Logout
@@ -325,145 +414,215 @@ export async function renderForm(container, user, role) {
 
   // Validação de arquivo no upload do Diploma
   const diplomaInput = document.getElementById('diploma');
-  diplomaInput.addEventListener('change', function () {
-    const file = this.files[0];
-    if (file) {
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
+  if (diplomaInput) {
+    diplomaInput.addEventListener('change', function () {
+      const file = this.files[0];
+      if (file) {
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
 
-      if (!allowedTypes.includes(file.type)) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Formato não permitido',
-          text: 'Por favor, selecione apenas arquivos PDF ou imagens JPG/JPEG.',
-          confirmButtonColor: '#ef4444'
-        });
-        this.value = '';
-        return;
-      }
+        if (!allowedTypes.includes(file.type)) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Formato não permitido',
+            text: 'Por favor, selecione apenas arquivos PDF ou imagens JPG/JPEG.',
+            confirmButtonColor: '#ef4444'
+          });
+          this.value = '';
+          return;
+        }
 
-      if (file.size > maxSize) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Arquivo muito pesado',
-          text: 'O tamanho máximo permitido é de 5MB. O seu arquivo possui ' + (file.size / (1024 * 1024)).toFixed(2) + 'MB.',
-          confirmButtonColor: '#ef4444'
-        });
-        this.value = '';
+        if (file.size > maxSize) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Arquivo muito pesado',
+            text: 'O tamanho máximo permitido é de 5MB. O seu arquivo possui ' + (file.size / (1024 * 1024)).toFixed(2) + 'MB.',
+            confirmButtonColor: '#ef4444'
+          });
+          this.value = '';
+        }
       }
-    }
-  });
+    });
+  }
 
   // Evento Cancelar
   const btnCancelar = document.getElementById('btnCancelar');
-  btnCancelar.addEventListener('click', () => {
-    Swal.fire({
-      title: 'Deseja cancelar?',
-      text: 'As informações não salvas serão perdidas.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Sim, cancelar',
-      cancelButtonText: 'Continuar preenchendo'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        form.reset();
-        if (existingData) {
-          // Restaura os dados originais
-          Object.keys(existingData).forEach(key => {
-            const field = form.elements[key];
-            if (field) {
-              if (field.type === 'checkbox') {
-                field.checked = !!existingData[key];
-              } else if (field.type !== 'file') {
-                field.value = existingData[key];
-              }
-            }
-          });
-        }
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    });
-  });
-
-  // Evento Submit
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (isSaving) return;
-    isSaving = true;
-
-    Swal.fire({
-      title: 'Enviando dados...',
-      text: 'Aguarde enquanto registramos as informações no sistema.',
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-
-    try {
-      const formDataObj = {};
-      const fields = new FormData(form);
-      for (const [key, value] of fields.entries()) {
-        if (key !== 'diploma') {
-          formDataObj[key] = value;
-        }
-      }
-      formDataObj.e_docente = form.elements['e_docente'].checked;
-      formDataObj.email = user.email.toLowerCase().trim(); // Garante o email correto
-      formDataObj.lastUpdated = new Date().toISOString();
-
-      // Upload do arquivo de diploma se houver
-      const diplomaFile = diplomaInput.files[0];
-      let diplomaUrl = existingData?.diplomaUrl || '';
-
-      if (diplomaFile) {
-        if (isConfigured) {
-          const fileRef = ref(storage, `diplomas/${user.email.replace(/[@.]/g, '_')}_${Date.now()}_${diplomaFile.name}`);
-          await uploadBytes(fileRef, diplomaFile);
-          diplomaUrl = await getDownloadURL(fileRef);
-        } else {
-          // No modo demo, simula a conversão/upload
-          diplomaUrl = 'https://example.com/mock-diploma.pdf';
-        }
-      }
-
-      formDataObj.diplomaUrl = diplomaUrl;
-
-      // Salva no Banco
-      if (isConfigured) {
-        await setDoc(doc(db, 'coletas', user.email.toLowerCase().trim()), formDataObj);
-      } else {
-        localStorage.setItem(`demo_coleta_${user.email}`, JSON.stringify(formDataObj));
-        // Adiciona na lista geral de demo coletas para o painel admin funcionar
-        const allDemoColetas = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
-        allDemoColetas[user.email] = formDataObj;
-        localStorage.setItem('all_demo_coletas', JSON.stringify(allDemoColetas));
-      }
-
-      existingData = formDataObj;
-
-      await Swal.fire({
-        icon: 'success',
-        title: 'Cadastro Realizado!',
-        text: 'Os dados do colaborador foram salvos com sucesso no banco do LAMES.',
-        confirmButtonColor: '#2563eb',
-        confirmButtonText: 'Ótimo!'
-      });
-
-    } catch (error) {
-      console.error(error);
+  if (btnCancelar) {
+    btnCancelar.addEventListener('click', () => {
       Swal.fire({
-        icon: 'error',
-        title: 'Ops! Algo deu errado',
-        text: error.message || 'Não foi possível conectar ao servidor. Tente novamente em instantes.',
-        confirmButtonColor: '#ef4444'
+        title: 'Deseja cancelar?',
+        text: 'As informações não salvas serão perdidas.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sim, cancelar',
+        cancelButtonText: 'Continuar preenchendo'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigateTo('inicio');
+        }
       });
-    } finally {
-      isSaving = false;
+    });
+  }
+
+  // Função auxiliar para capturar dados e fazer upload de diploma
+  const processFormData = async () => {
+    const formDataObj = {};
+    const fields = new FormData(form);
+    for (const [key, value] of fields.entries()) {
+      if (key !== 'diploma') {
+        formDataObj[key] = value;
+      }
     }
-  });
+    formDataObj.e_docente = form.elements['e_docente'].checked;
+    formDataObj.email = user.email.toLowerCase().trim(); // Garante o email correto
+    formDataObj.lastUpdated = new Date().toISOString();
+
+    // Upload do arquivo de diploma se houver
+    const diplomaFile = diplomaInput ? diplomaInput.files[0] : null;
+    let diplomaUrl = existingData?.diplomaUrl || '';
+
+    if (diplomaFile) {
+      if (isConfigured) {
+        const fileRef = ref(storage, `diplomas/${user.email.replace(/[@.]/g, '_')}_${Date.now()}_${diplomaFile.name}`);
+        await uploadBytes(fileRef, diplomaFile);
+        diplomaUrl = await getDownloadURL(fileRef);
+      } else {
+        // No modo demo, simula a conversão/upload
+        diplomaUrl = 'https://example.com/mock-diploma.pdf';
+      }
+    }
+
+    formDataObj.diplomaUrl = diplomaUrl;
+    return formDataObj;
+  };
+
+  // Evento Salvar Rascunho
+  const btnSalvarRascunho = document.getElementById('btnSalvarRascunho');
+  if (btnSalvarRascunho) {
+    btnSalvarRascunho.addEventListener('click', async () => {
+      if (isSaving) return;
+      isSaving = true;
+
+      Swal.fire({
+        title: 'Salvando Rascunho...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const formDataObj = await processFormData();
+        formDataObj.status = 'editando'; // Define o status como editando (rascunho)
+        formDataObj.pendencias = pendencias; // Preserva pendências se houver
+
+        if (isConfigured) {
+          await setDoc(doc(db, 'coletas', user.email.toLowerCase().trim()), formDataObj);
+        } else {
+          localStorage.setItem(`demo_coleta_${user.email}`, JSON.stringify(formDataObj));
+          const allDemoColetas = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
+          allDemoColetas[user.email] = formDataObj;
+          localStorage.setItem('all_demo_coletas', JSON.stringify(allDemoColetas));
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Rascunho Salvo!',
+          text: 'Seus dados foram guardados como rascunho. Você poderá continuar quando quiser.',
+          confirmButtonColor: '#f59e0b'
+        });
+
+        navigateTo('inicio');
+
+      } catch (error) {
+        console.error(error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Ops! Ocorreu um erro',
+          text: error.message || 'Erro ao salvar rascunho.',
+          confirmButtonColor: '#ef4444'
+        });
+      } finally {
+        isSaving = false;
+      }
+    });
+  }
+
+  // Evento Enviar para Análise (Submit)
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (isSaving) return;
+      
+      // Validação do Diploma (Obrigatório para submissão final)
+      const diplomaUploaded = existingData?.diplomaUrl || (diplomaInput && diplomaInput.files[0]);
+      if (!diplomaUploaded) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Diploma Ausente',
+          text: 'Você precisa anexar o seu diploma para enviar o cadastro para análise.',
+          confirmButtonColor: '#ef4444'
+        });
+        return;
+      }
+
+      const confirmSubmit = await Swal.fire({
+        title: 'Deseja enviar?',
+        text: 'Ao enviar para análise, o formulário será bloqueado e não poderá ser editado até a aprovação da administração.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sim, enviar',
+        cancelButtonText: 'Revisar dados',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#94a3b8'
+      });
+
+      if (!confirmSubmit.isConfirmed) return;
+      isSaving = true;
+
+      Swal.fire({
+        title: 'Enviando Cadastro...',
+        text: 'Submetendo dados e arquivos para homologação.',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      try {
+        const formDataObj = await processFormData();
+        formDataObj.status = 'em_analise'; // Define status para em_analise
+        formDataObj.pendencias = ''; // Limpa pendências anteriores ao reenviar
+
+        if (isConfigured) {
+          await setDoc(doc(db, 'coletas', user.email.toLowerCase().trim()), formDataObj);
+        } else {
+          localStorage.setItem(`demo_coleta_${user.email}`, JSON.stringify(formDataObj));
+          const allDemoColetas = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
+          allDemoColetas[user.email] = formDataObj;
+          localStorage.setItem('all_demo_coletas', JSON.stringify(allDemoColetas));
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Enviado para Análise!',
+          text: 'Seus dados foram submetidos com sucesso. O LAMES analisará seu cadastro em breve.',
+          confirmButtonColor: '#2563eb'
+        });
+
+        navigateTo('inicio');
+
+      } catch (error) {
+        console.error(error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Ops! Ocorreu um erro',
+          text: error.message || 'Erro ao enviar cadastro.',
+          confirmButtonColor: '#ef4444'
+        });
+      } finally {
+        isSaving = false;
+      }
+    });
+  }
 
   return {
     destroy: () => {}

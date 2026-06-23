@@ -3,9 +3,11 @@ import { initRouter, registerRoute } from './router';
 import { renderLogin } from './pages/login';
 import { renderForm } from './pages/form';
 import { renderAdmin } from './pages/admin';
+import { renderInicio } from './pages/inicio';
 
 // Registra as views correspondentes às rotas
 registerRoute('login', renderLogin);
+registerRoute('inicio', renderInicio);
 registerRoute('formulario', renderForm);
 registerRoute('admin', renderAdmin);
 
