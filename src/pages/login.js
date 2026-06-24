@@ -113,14 +113,11 @@ export function renderLogin(container) {
 
         await registerUser(email, password);
         
-        Swal.fire({
+        await Swal.fire({
           icon: 'success',
           title: 'Cadastro Realizado!',
-          text: 'Sua conta foi criada e autorizada com sucesso. Você já pode fazer login.',
+          text: 'Sua conta foi criada e autorizada com sucesso. Você já está logado no sistema.',
           confirmButtonColor: '#2563eb'
-        }).then(() => {
-          isRegisterMode = false;
-          renderContent();
         });
       } else {
         // Login
