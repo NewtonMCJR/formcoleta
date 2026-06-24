@@ -5,7 +5,7 @@ import {
   onAuthStateChanged,
   deleteUser
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, isConfigured } from './firebase';
 
 /**
@@ -117,6 +117,15 @@ export function onAuthChange(callback) {
     const savedUser = localStorage.getItem('demo_user');
     const savedRole = localStorage.getItem('demo_role');
     if (savedUser && savedRole) {
+      // Grava no localStorage de acessos
+      const allDemoUsers = JSON.parse(localStorage.getItem('all_demo_usuarios') || '{}');
+      allDemoUsers[savedUser.toLowerCase().trim()] = {
+        email: savedUser.toLowerCase().trim(),
+        role: savedRole,
+        lastAccess: new Date().toISOString()
+      };
+      localStorage.setItem('all_demo_usuarios', JSON.stringify(allDemoUsers));
+
       callback({ email: savedUser }, savedRole);
     } else {
       callback(null, null);
@@ -128,6 +137,18 @@ export function onAuthChange(callback) {
     if (user) {
       const whitelistData = await checkWhitelist(user.email);
       if (whitelistData) {
+        // Grava no Firestore
+        try {
+          const userRef = doc(db, 'usuarios', user.email.toLowerCase().trim());
+          await setDoc(userRef, {
+            email: user.email.toLowerCase().trim(),
+            role: whitelistData.role,
+            lastAccess: new Date().toISOString()
+          }, { merge: true });
+        } catch (e) {
+          console.error("Erro ao registrar acesso do usuário no Firestore:", e);
+        }
+
         callback(user, whitelistData.role);
       } else {
         await signOut(auth);

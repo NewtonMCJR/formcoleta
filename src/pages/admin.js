@@ -5,13 +5,17 @@ import { logoutUser } from '../auth';
 import { navigateTo } from '../router';
 
 export async function renderAdmin(container, user, role) {
-  let activeTab = 'registros'; // 'registros' ou 'whitelist'
+  let activeTab = 'registros'; // 'registros', 'whitelist' ou 'usuarios'
   let searchWord = '';
   let filterType = '';
   let filterStatus = ''; // Filtro por status
   
+  let searchUserEmail = ''; // Filtro de busca na aba de usuários
+  let filterUserRole = '';  // Filtro de perfil na aba de usuários
+  
   let registrosList = [];
   let whitelistList = [];
+  let usuariosList = []; // Nova lista para os usuários cadastrados no Auth/sistema
 
   // Inicializa dados fictícios de demonstração no localStorage se vazios
   if (!localStorage.getItem('demo_whitelist')) {
@@ -44,23 +48,34 @@ export async function renderAdmin(container, user, role) {
         situacao_atual: 'Ativo',
         e_docente: false,
         orientador: 'Dr. João Medeiros',
-        status: 'em_analise', // Inicializa como 'em_analise' para testar a revisão
+        status: 'em_analise',
         pendencias: '',
         lastUpdated: new Date().toISOString()
       }
     }));
   }
+  if (!localStorage.getItem('all_demo_usuarios')) {
+    localStorage.setItem('all_demo_usuarios', JSON.stringify({
+      'admin@lames.org': { email: 'admin@lames.org', role: 'admin', lastAccess: new Date().toISOString() },
+      'colab@lames.org': { email: 'colab@lames.org', role: 'colaborador', lastAccess: new Date().toISOString() }
+    }));
+  }
 
-  // Carrega registros e whitelist
+  // Carrega registros, whitelist e usuários logados
   const fetchData = async () => {
     try {
       if (isConfigured) {
-        // Firebase
+        // Firebase - Coleção de Coletas
         const regSnap = await getDocs(collection(db, 'coletas'));
         registrosList = regSnap.docs.map(doc => doc.data());
 
+        // Firebase - Coleção de Whitelist
         const wlSnap = await getDocs(collection(db, 'whitelist'));
         whitelistList = wlSnap.docs.map(doc => doc.data());
+
+        // Firebase - Coleção de Usuários Registrados
+        const usrSnap = await getDocs(collection(db, 'usuarios'));
+        usuariosList = usrSnap.docs.map(doc => doc.data());
       } else {
         // Demo Mode
         const savedWL = JSON.parse(localStorage.getItem('demo_whitelist') || '{}');
@@ -68,6 +83,9 @@ export async function renderAdmin(container, user, role) {
 
         const savedReg = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
         registrosList = Object.values(savedReg);
+
+        const savedUsr = JSON.parse(localStorage.getItem('all_demo_usuarios') || '{}');
+        usuariosList = Object.values(savedUsr);
       }
     } catch (error) {
       console.error('Erro ao buscar dados do banco:', error);
@@ -136,11 +154,16 @@ export async function renderAdmin(container, user, role) {
             <button id="tabWhitelist" class="px-5 py-3 font-bold text-sm border-b-2 transition duration-150 ${activeTab === 'whitelist' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}">
               Gerenciar Acessos (${whitelistList.length})
             </button>
+            <button id="tabUsuarios" class="px-5 py-3 font-bold text-sm border-b-2 transition duration-150 ${activeTab === 'usuarios' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}">
+              Usuários Registrados (${usuariosList.length})
+            </button>
           </div>
         </div>
 
         <div class="p-8">
-          ${activeTab === 'registros' ? renderRegistrosTab() : renderWhitelistTab()}
+          ${activeTab === 'registros' ? renderRegistrosTab() : ''}
+          ${activeTab === 'whitelist' ? renderWhitelistTab() : ''}
+          ${activeTab === 'usuarios' ? renderUsuariosTab() : ''}
         </div>
       </div>
     `;
@@ -175,6 +198,11 @@ export async function renderAdmin(container, user, role) {
 
     document.getElementById('tabWhitelist').addEventListener('click', () => {
       activeTab = 'whitelist';
+      renderUI();
+    });
+
+    document.getElementById('tabUsuarios').addEventListener('click', () => {
+      activeTab = 'usuarios';
       renderUI();
     });
 
@@ -340,6 +368,66 @@ export async function renderAdmin(container, user, role) {
     `;
   };
 
+  const renderUsuariosTab = () => {
+    // Filtra lista de acessos
+    const filteredUsers = usuariosList.filter(u => {
+      const email = (u.email || '').toLowerCase();
+      const matchEmail = email.includes(searchUserEmail.toLowerCase());
+      const matchRole = filterUserRole === '' || u.role === filterUserRole;
+      return matchEmail && matchRole;
+    });
+
+    return `
+      <!-- Filters bar -->
+      <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex-1">
+          <input type="text" id="searchUserEmail" value="${searchUserEmail}" placeholder="Buscar e-mail..."
+            class="w-full rounded-xl border border-slate-200 p-3 bg-slate-50 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition duration-150 text-sm">
+        </div>
+        <div class="w-full md:w-64">
+          <select id="filterUserRoleSelect"
+            class="w-full rounded-xl border border-slate-200 p-3 bg-slate-50 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition duration-150 text-sm">
+            <option value="">Todos os Perfis</option>
+            <option value="colaborador" ${filterUserRole === 'colaborador' ? 'selected' : ''}>Colaborador</option>
+            <option value="admin" ${filterUserRole === 'admin' ? 'selected' : ''}>Administrador</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto border border-slate-100 rounded-2xl shadow-sm">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100 text-slate-600 font-semibold">
+              <th class="p-4 px-6">E-mail Cadastrado</th>
+              <th class="p-4 px-6">Perfil</th>
+              <th class="p-4 px-6">Último Acesso no Sistema</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 text-slate-700">
+            ${filteredUsers.length === 0 ? `
+              <tr>
+                <td colspan="3" class="text-center p-12 text-slate-400">Nenhum usuário cadastrado fez login ainda.</td>
+              </tr>
+            ` : filteredUsers.map(u => `
+              <tr class="hover:bg-slate-50/50 transition">
+                <td class="p-4 px-6 font-mono text-xs text-slate-900 font-bold">${u.email}</td>
+                <td class="p-4 px-6">
+                  <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold ${u.role === 'admin' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}">
+                    ${u.role === 'admin' ? 'Administrador' : 'Colaborador'}
+                  </span>
+                </td>
+                <td class="p-4 px-6 text-slate-500 font-medium">
+                  ${u.lastAccess ? new Date(u.lastAccess).toLocaleString('pt-BR') : '-'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
   const setupTabSpecificEvents = () => {
     if (activeTab === 'registros') {
       // Input de busca
@@ -474,7 +562,52 @@ export async function renderAdmin(container, user, role) {
           }
         });
       });
+    } else if (activeTab === 'usuarios') {
+      // Evento de busca de usuários por e-mail
+      const searchUserBar = document.getElementById('searchUserEmail');
+      searchUserBar.addEventListener('input', (e) => {
+        searchUserEmail = e.target.value;
+        container.querySelector('tbody').outerHTML = getNewUsersTableBody();
+      });
+
+      // Evento de filtro de usuários por perfil
+      const filterUserRoleSelect = document.getElementById('filterUserRoleSelect');
+      filterUserRoleSelect.addEventListener('change', (e) => {
+        filterUserRole = e.target.value;
+        container.querySelector('tbody').outerHTML = getNewUsersTableBody();
+      });
     }
+  };
+
+  const getNewUsersTableBody = () => {
+    const filteredUsers = usuariosList.filter(u => {
+      const email = (u.email || '').toLowerCase();
+      const matchEmail = email.includes(searchUserEmail.toLowerCase());
+      const matchRole = filterUserRole === '' || u.role === filterUserRole;
+      return matchEmail && matchRole;
+    });
+
+    return `
+      <tbody class="divide-y divide-slate-100 text-slate-700">
+        ${filteredUsers.length === 0 ? `
+          <tr>
+            <td colspan="3" class="text-center p-12 text-slate-400">Nenhum usuário cadastrado encontrado.</td>
+          </tr>
+        ` : filteredUsers.map(u => `
+          <tr class="hover:bg-slate-50/50 transition">
+            <td class="p-4 px-6 font-mono text-xs text-slate-900 font-bold">${u.email}</td>
+            <td class="p-4 px-6">
+              <span class="text-xs px-2.5 py-0.5 rounded-full font-semibold ${u.role === 'admin' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-blue-50 text-blue-700 border border-blue-100'}">
+                ${u.role === 'admin' ? 'Administrador' : 'Colaborador'}
+              </span>
+            </td>
+            <td class="p-4 px-6 text-slate-500 font-medium">
+              ${u.lastAccess ? new Date(u.lastAccess).toLocaleString('pt-BR') : '-'}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    `;
   };
 
   const getNewTableBody = () => {
