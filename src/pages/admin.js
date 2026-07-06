@@ -63,38 +63,40 @@ export async function renderAdmin(container, user, role) {
 
   // Carrega registros, whitelist e usuários logados
   const fetchData = async () => {
-    try {
-      if (isConfigured) {
-        // Firebase - Coleção de Coletas
+    if (isConfigured) {
+      // Firebase - Coleção de Coletas
+      try {
         const regSnap = await getDocs(collection(db, 'coletas'));
         registrosList = regSnap.docs.map(doc => doc.data());
+      } catch (err) {
+        console.error('Erro ao buscar coletas:', err);
+      }
 
-        // Firebase - Coleção de Whitelist
+      // Firebase - Coleção de Whitelist
+      try {
         const wlSnap = await getDocs(collection(db, 'whitelist'));
         whitelistList = wlSnap.docs.map(doc => doc.data());
+      } catch (err) {
+        console.error('Erro ao buscar whitelist:', err);
+      }
 
-        // Firebase - Coleção de Usuários Registrados
+      // Firebase - Coleção de Usuários Registrados
+      try {
         const usrSnap = await getDocs(collection(db, 'usuarios'));
         usuariosList = usrSnap.docs.map(doc => doc.data());
-      } else {
-        // Demo Mode
-        const savedWL = JSON.parse(localStorage.getItem('demo_whitelist') || '{}');
-        whitelistList = Object.values(savedWL);
-
-        const savedReg = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
-        registrosList = Object.values(savedReg);
-
-        const savedUsr = JSON.parse(localStorage.getItem('all_demo_usuarios') || '{}');
-        usuariosList = Object.values(savedUsr);
+      } catch (err) {
+        console.error('Erro ao buscar usuários registrados:', err);
       }
-    } catch (error) {
-      console.error('Erro ao buscar dados do banco:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Erro ao carregar dados',
-        text: 'Não foi possível ler as informações do Firebase. Verifique suas regras e conexão.',
-        confirmButtonColor: '#ef4444'
-      });
+    } else {
+      // Demo Mode
+      const savedWL = JSON.parse(localStorage.getItem('demo_whitelist') || '{}');
+      whitelistList = Object.values(savedWL);
+
+      const savedReg = JSON.parse(localStorage.getItem('all_demo_coletas') || '{}');
+      registrosList = Object.values(savedReg);
+
+      const savedUsr = JSON.parse(localStorage.getItem('all_demo_usuarios') || '{}');
+      usuariosList = Object.values(savedUsr);
     }
   };
 
