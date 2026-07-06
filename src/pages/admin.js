@@ -717,15 +717,73 @@ export async function renderAdmin(container, user, role) {
     const isPendingReview = reg.status === 'em_analise';
     const hasPendencies = reg.status === 'indeferido';
 
+    // Gera lista de formações acadêmicas
+    let formacoesHTML = '';
+    if (reg.formacoes && Array.isArray(reg.formacoes)) {
+      formacoesHTML = reg.formacoes.map((formacao, idx) => `
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2 text-xs">
+          <div class="flex justify-between items-center border-b border-slate-200/50 pb-1.5 mb-1.5">
+            <span class="font-bold text-slate-900"># ${idx + 1} - ${formacao.titulacao || '-'}</span>
+            <span>${formacao.e_graduacao ? '<span class="bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Graduação em Andamento</span>' : '<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase">Concluído</span>'}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-y-1.5 gap-x-4">
+            <div><b class="text-slate-500">Local:</b> <span class="text-slate-800 font-medium">${formacao.local_formacao || '-'}</span></div>
+            <div><b class="text-slate-500">Conclusão/Previsão:</b> <span class="text-slate-800 font-medium">${formacao.ano_conclusao || '-'}</span></div>
+            
+            <div class="col-span-2 pt-1.5 border-t border-slate-200/40 mt-1 flex flex-col gap-1">
+              <b class="text-slate-500">Documento(s):</b>
+              <div class="flex flex-wrap gap-3 font-semibold mt-0.5">
+                ${formacao.e_graduacao ? `
+                  ${formacao.historicoUrl ? `<a href="${formacao.historicoUrl}" target="_blank" class="text-blue-600 hover:underline">Histórico Escolar</a>` : '<span class="text-red-500">Histórico não enviado</span>'}
+                  ${formacao.matriculaUrl ? `<a href="${formacao.matriculaUrl}" target="_blank" class="text-blue-600 hover:underline">Comprovante Matrícula</a>` : '<span class="text-red-500">Comprovante não enviado</span>'}
+                ` : `
+                  ${formacao.diplomaUrl ? `<a href="${formacao.diplomaUrl}" target="_blank" class="text-blue-600 hover:underline">Diploma</a>` : '<span class="text-red-500">Diploma não enviado</span>'}
+                `}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('<div class="h-2"></div>');
+    } else {
+      // Fallback para registros antigos sem a lista formacoes
+      formacoesHTML = `
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+          <div class="grid grid-cols-2 gap-y-2">
+            <div><b class="text-slate-500">Titulação Máxima:</b> <span class="text-slate-800">${reg.titulacao || '-'}</span></div>
+            <div><b class="text-slate-500">Local de Formação:</b> <span class="text-slate-800">${reg.local_formacao || '-'}</span></div>
+            <div><b class="text-slate-500">Ano de Conclusão:</b> <span class="text-slate-800">${reg.ano_conclusao || '-'}</span></div>
+            <div>
+              <b class="text-slate-500">Diploma:</b> 
+              ${reg.diplomaUrl ? `
+                <a href="${reg.diplomaUrl}" target="_blank" class="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Visualizar Anexo</a>
+              ` : '<span class="text-slate-400">Não anexado</span>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Gera lista de capacitações
+    const capacitacoesList = (reg.capacitacoes || []).map(cap => `
+      <span class="bg-blue-50 text-blue-700 border border-blue-100 text-[10px] px-2.5 py-1 rounded-full font-bold">${cap}</span>
+    `).join(' ') || '<span class="text-slate-400">Nenhum curso selecionado</span>';
+
     Swal.fire({
       title: `<span class="text-lg font-extrabold text-slate-900">Ficha Cadastral: ${reg.nome_completo || 'Colaborador'}</span>`,
       html: `
         <div class="text-left text-sm max-h-[60vh] overflow-y-auto pr-2 space-y-6 pt-4 font-sans leading-relaxed">
           
-          <!-- Status Banner -->
-          <div class="flex justify-between items-center p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-            <span class="font-bold text-slate-500">Status do Cadastro:</span>
-            <span>${getStatusBadge(reg.status)}</span>
+          <!-- Foto e Status Banner -->
+          <div class="flex gap-4 items-center bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <div class="w-16 h-16 rounded-full overflow-hidden border border-slate-200 shadow-sm bg-slate-100 flex-shrink-0 flex items-center justify-center">
+              ${reg.fotoUrl ? `<img src="${reg.fotoUrl}" class="w-full h-full object-cover">` : `
+                <svg class="w-8 h-8 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+              `}
+            </div>
+            <div class="flex-1 flex flex-col justify-center">
+              <span class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status do Cadastro</span>
+              <div>${getStatusBadge(reg.status)}</div>
+            </div>
           </div>
 
           <!-- Pendências atuais (se houver) -->
@@ -763,22 +821,30 @@ export async function renderAdmin(container, user, role) {
           <!-- Secção 3 -->
           <div>
             <h4 class="font-bold text-blue-700 text-xs uppercase tracking-wider mb-2 border-b pb-1">3. Formação Acadêmica</h4>
-            <div class="grid grid-cols-2 gap-y-2 text-xs">
-              <div><b class="text-slate-500">Titulação Máxima:</b> <span class="text-slate-800">${reg.titulacao || '-'}</span></div>
-              <div><b class="text-slate-500">Local de Formação:</b> <span class="text-slate-800">${reg.local_formacao || '-'}</span></div>
-              <div><b class="text-slate-500">Ano de Conclusão:</b> <span class="text-slate-800">${reg.ano_conclusao || '-'}</span></div>
-              <div>
-                <b class="text-slate-500">Diploma:</b> 
-                ${reg.diplomaUrl ? `
-                  <a href="${reg.diplomaUrl}" target="_blank" class="text-blue-600 font-semibold hover:underline inline-flex items-center gap-0.5">Visualizar Anexo</a>
-                ` : '<span class="text-slate-400">Não anexado</span>'}
-              </div>
+            <div class="space-y-3">
+              ${formacoesHTML}
             </div>
           </div>
 
-          <!-- Secção 4 -->
+          <!-- Secção 4 (Nova) -->
           <div>
-            <h4 class="font-bold text-blue-700 text-xs uppercase tracking-wider mb-2 border-b pb-1">4. Informações do Coleta (Anual)</h4>
+            <h4 class="font-bold text-blue-700 text-xs uppercase tracking-wider mb-2 border-b pb-1">4. Cursos de Capacitação</h4>
+            <div class="space-y-3">
+              <div class="flex flex-wrap gap-2">
+                ${capacitacoesList}
+              </div>
+              ${reg.outras_capacitacoes ? `
+                <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs">
+                  <b class="text-slate-600 block mb-1">Outros cursos/Livre:</b>
+                  <p class="text-slate-800 whitespace-pre-line">${reg.outras_capacitacoes}</p>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- Secção 5 -->
+          <div>
+            <h4 class="font-bold text-blue-700 text-xs uppercase tracking-wider mb-2 border-b pb-1">5. Informações do Coleta (Anual)</h4>
             <div class="grid grid-cols-2 gap-y-2 text-xs font-sans">
               <div><b class="text-slate-500">Vínculo:</b> <span class="text-slate-800">${reg.vinculo || '-'}</span></div>
               <div><b class="text-slate-500">Prazo do Vínculo:</b> <span class="text-slate-800">${reg.prazo_vinculo || '-'}</span></div>
