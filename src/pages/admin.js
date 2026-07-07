@@ -715,6 +715,225 @@ export async function renderAdmin(container, user, role) {
     }
   };
 
+  const generatePDF = async (reg) => {
+    if (!window.html2pdf) {
+      throw new Error('Biblioteca html2pdf.js não encontrada. Recarregue a página.');
+    }
+
+    // Mapeamento de formações para o PDF
+    let formacoesPDFHTML = '';
+    if (reg.formacoes && Array.isArray(reg.formacoes) && reg.formacoes.length > 0) {
+      formacoesPDFHTML = reg.formacoes.map((formacao, idx) => `
+        <div style="padding: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; font-size: 11px; page-break-inside: avoid;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px;">
+            <b style="color: #0f172a; font-family: sans-serif;"># ${idx + 1} - ${formacao.titulacao || '-'}</b>
+            <span style="font-weight: bold; font-family: sans-serif; font-size: 10px; color: ${formacao.e_graduacao ? '#b45309' : '#15803d'};">
+              ${formacao.e_graduacao ? 'Graduação em Andamento' : 'Concluído'}
+            </span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-family: sans-serif;">
+            <div><b style="color: #64748b;">Local:</b> <span style="color: #334155;">${formacao.local_formacao || '-'}</span></div>
+            <div><b style="color: #64748b;">Conclusão/Previsão:</b> <span style="color: #334155;">${formacao.ano_conclusao || '-'}</span></div>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      formacoesPDFHTML = `
+        <div style="padding: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 11px; font-family: sans-serif;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+            <div><b style="color: #64748b;">Titulação Máxima:</b> <span style="color: #334155;">${reg.titulacao || '-'}</span></div>
+            <div><b style="color: #64748b;">Local:</b> <span style="color: #334155;">${reg.local_formacao || '-'}</span></div>
+            <div><b style="color: #64748b;">Ano de Conclusão:</b> <span style="color: #334155;">${reg.ano_conclusao || '-'}</span></div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Mapeamento de capacitações para o PDF
+    const capacitacoesPDFList = (reg.capacitacoes || []).map(cap => `
+      <span style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; padding: 2px 8px; border-radius: 9999px; font-size: 10px; font-weight: bold; margin-right: 4px; margin-bottom: 4px; font-family: sans-serif;">
+        ${cap}
+      </span>
+    `).join('') || '<span style="color: #94a3b8; font-size: 11px; font-family: sans-serif;">Nenhum curso selecionado</span>';
+
+    // Cria contêiner temporário
+    const printContainer = document.createElement('div');
+    printContainer.style.position = 'absolute';
+    printContainer.style.left = '-9999px';
+    printContainer.style.top = '-9999px';
+    printContainer.style.width = '170mm'; // Ajuste fino para margens A4
+    printContainer.style.boxSizing = 'border-box';
+    printContainer.style.backgroundColor = '#ffffff';
+
+    printContainer.innerHTML = `
+      <div style="padding: 15px; color: #1e293b; font-family: sans-serif; line-height: 1.5;">
+        
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px;">
+          <div>
+            <h1 style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; text-transform: uppercase;">Laboratório de Patologia</h1>
+            <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">LAMES - Ficha Cadastral</p>
+          </div>
+          <div style="text-align: right; font-size: 10px; color: #64748b;">
+            <p style="margin: 0;"><b>Gerado em:</b> ${new Date().toLocaleDateString('pt-BR')}</p>
+            <p style="margin: 2px 0 0 0;">Sistema de Coleta LAMES</p>
+          </div>
+        </div>
+
+        <!-- Foto de Perfil e Título Principal -->
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+          <div>
+            <h2 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a;">FICHA CADASTRAL DE COLABORADOR</h2>
+            <p style="margin: 4px 0 0 0; font-size: 10px; color: #64748b; font-family: monospace;">E-mail: ${reg.email}</p>
+            <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">Status: <b style="text-transform: uppercase; color: #2563eb;">${(reg.status || 'rascunho').replace('_', ' ')}</b></p>
+          </div>
+          <div style="width: 70px; height: 70px; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+            ${reg.fotoUrl ? `<img src="${reg.fotoUrl}" style="width: 100%; height: 100%; object-fit: cover;" crossOrigin="anonymous">` : `
+              <svg style="width: 35px; height: 35px; color: #cbd5e1;" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+            `}
+          </div>
+        </div>
+
+        <!-- 1. Identificação -->
+        <div style="margin-bottom: 18px;">
+          <h3 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">1. Identificação e Contato</h3>
+          <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+            <tbody>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold; width: 35%;">Nome Completo:</td>
+                <td style="padding: 4px 0; color: #0f172a; font-weight: bold;">${reg.nome_completo || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Tipo de Integrante:</td>
+                <td style="padding: 4px 0; color: #0f172a; text-transform: capitalize;">${reg.tipo_integrante || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">CPF:</td>
+                <td style="padding: 4px 0; color: #0f172a; font-family: monospace;">${reg.cpf || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">RG:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.rg || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Endereço Residencial:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.endereco || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Telefone de Contato:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.telefone || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 2. Saúde e Emergência -->
+        <div style="margin-bottom: 18px;">
+          <h3 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">2. Saúde e Emergência</h3>
+          <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+            <tbody>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold; width: 35%;">Grupo Sanguíneo:</td>
+                <td style="padding: 4px 0; color: #0f172a; font-weight: bold;">${reg.grupo_sanguineo || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Alergias:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.alergias || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Contato de Emergência:</td>
+                <td style="padding: 4px 0; color: #0f172a; font-weight: bold;">${reg.contato_emergencia || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 3. Formação Acadêmica -->
+        <div style="margin-bottom: 18px; page-break-inside: avoid;">
+          <h3 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">3. Formação Acadêmica</h3>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            ${formacoesPDFHTML}
+          </div>
+        </div>
+
+        <!-- 4. Cursos de Capacitação -->
+        <div style="margin-bottom: 18px; page-break-inside: avoid;">
+          <h3 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">4. Cursos de Capacitação</h3>
+          <div style="padding: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 10px;">
+            <div style="margin-bottom: 6px;">
+              ${capacitacoesPDFList}
+            </div>
+            ${reg.outras_capacitacoes ? `
+              <div style="border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 6px;">
+                <b style="color: #64748b; display: block; margin-bottom: 2px;">Outros cursos e informações:</b>
+                <p style="margin: 0; color: #334155; white-space: pre-line;">${reg.outras_capacitacoes}</p>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- 5. Informações do Coleta (Anual) -->
+        <div style="margin-bottom: 18px; page-break-inside: avoid;">
+          <h3 style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #1d4ed8; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px;">5. Informações do Coleta (Anual)</h3>
+          <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+            <tbody>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold; width: 35%;">Vínculo:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.vinculo || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Prazo do Vínculo:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.prazo_vinculo || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Origem do Vínculo:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.origem_vinculo || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Cargo / Nível:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.cargo_nivel || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Situação Atual:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.situacao_atual || '-'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">É Docente?</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.e_docente ? 'Sim' : 'Não'}</td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 4px 0; color: #64748b; font-weight: bold;">Orientador:</td>
+                <td style="padding: 4px 0; color: #0f172a;">${reg.orientador || '-'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 30px; text-align: center; font-size: 8px; color: #94a3b8;">
+          <p>Este documento é uma representação digital gerada em tempo real pelo sistema de Cadastro LAMES - Laboratório de Patologia.</p>
+        </div>
+
+      </div>
+    `;
+
+    document.body.appendChild(printContainer);
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `ficha_cadastral_${(reg.nome_completo || 'colaborador').replace(/\s+/g, '_').toLowerCase()}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+      await window.html2pdf().set(opt).from(printContainer).save();
+    } finally {
+      document.body.removeChild(printContainer);
+    }
+  };
+
   const showDetailModal = (reg) => {
     const isPendingReview = reg.status === 'em_analise';
     const hasPendencies = reg.status === 'indeferido';
@@ -873,9 +1092,21 @@ export async function renderAdmin(container, user, role) {
         </div>
       `,
       width: '600px',
-      showConfirmButton: !isPendingReview, // Oculta botão fechar se mostrar botões de homologação
+      showConfirmButton: true,
+      confirmButtonText: 'Baixar Ficha',
       confirmButtonColor: '#2563eb',
-      confirmButtonText: 'Fechar Ficha',
+      showCancelButton: true,
+      cancelButtonText: 'Fechar Ficha',
+      cancelButtonColor: '#64748b',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          await generatePDF(reg);
+          return false; // Mantém o modal aberto
+        } catch (error) {
+          Swal.showValidationMessage(`Erro ao gerar PDF: ${error.message}`);
+        }
+      },
       didOpen: () => {
         if (isPendingReview) {
           // Evento Deferir
