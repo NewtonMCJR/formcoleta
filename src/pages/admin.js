@@ -776,7 +776,7 @@ export async function renderAdmin(container, user, role) {
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px;">
           <div>
-            <h1 style="margin: 0; font-size: 18px; font-weight: 800; color: #0f172a; text-transform: uppercase;">Laboratório de Patologia</h1>
+            <h1 style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a; text-transform: uppercase;">Laboratório de Medicina Experimental e Saúde</h1>
             <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">LAMES - Ficha Cadastral</p>
           </div>
           <div style="text-align: right; font-size: 10px; color: #64748b;">
@@ -916,7 +916,7 @@ export async function renderAdmin(container, user, role) {
 
         <!-- Footer -->
         <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-top: 30px; text-align: center; font-size: 8px; color: #94a3b8;">
-          <p>Este documento é uma representação digital gerada em tempo real pelo sistema de Cadastro LAMES - Laboratório de Patologia.</p>
+          <p>Este documento é uma representação digital gerada em tempo real pelo sistema de Cadastro LAMES - Laboratório de Medicina Experimental e Saúde.</p>
         </div>
 
       </div>
