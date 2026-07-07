@@ -793,7 +793,7 @@ export async function renderAdmin(container, user, role) {
             <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">Status: <b style="text-transform: uppercase; color: #2563eb;">${(reg.status || 'rascunho').replace('_', ' ')}</b></p>
           </div>
           <div style="width: 70px; height: 70px; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; background-color: #f8fafc; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-            ${reg.fotoUrl ? `<img src="${reg.fotoUrl}" style="width: 100%; height: 100%; object-fit: cover;" crossOrigin="anonymous">` : `
+            ${reg.fotoUrl ? `<img src="${reg.fotoUrl}" style="width: 100%; height: 100%; object-fit: cover;" crossorigin="anonymous">` : `
               <svg style="width: 35px; height: 35px; color: #cbd5e1;" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
             `}
           </div>
