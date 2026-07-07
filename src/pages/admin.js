@@ -758,10 +758,13 @@ export async function renderAdmin(container, user, role) {
 
     // Cria contêiner temporário
     const printContainer = document.createElement('div');
-    printContainer.style.position = 'absolute';
-    printContainer.style.left = '-9999px';
-    printContainer.style.top = '-9999px';
-    printContainer.style.width = '170mm'; // Ajuste fino para margens A4
+    printContainer.style.position = 'fixed';
+    printContainer.style.left = '0';
+    printContainer.style.top = '0';
+    printContainer.style.opacity = '0';
+    printContainer.style.zIndex = '-9999';
+    printContainer.style.pointerEvents = 'none';
+    printContainer.style.width = '175mm'; // Ajuste fino para margens A4
     printContainer.style.boxSizing = 'border-box';
     printContainer.style.backgroundColor = '#ffffff';
 
