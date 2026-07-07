@@ -756,17 +756,19 @@ export async function renderAdmin(container, user, role) {
       </span>
     `).join('') || '<span style="color: #94a3b8; font-size: 11px; font-family: sans-serif;">Nenhum curso selecionado</span>';
 
-    // Cria contêiner temporário
+    // Cria contêiner invisível no fluxo normal (sem usar opacity: 0 que zera o canvas)
+    const wrapper = document.createElement('div');
+    wrapper.style.height = '0';
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '0';
+    wrapper.style.top = '0';
+
     const printContainer = document.createElement('div');
-    printContainer.style.position = 'fixed';
-    printContainer.style.left = '0';
-    printContainer.style.top = '0';
-    printContainer.style.opacity = '0';
-    printContainer.style.zIndex = '-9999';
-    printContainer.style.pointerEvents = 'none';
     printContainer.style.width = '175mm'; // Ajuste fino para margens A4
     printContainer.style.boxSizing = 'border-box';
     printContainer.style.backgroundColor = '#ffffff';
+    printContainer.style.color = '#1e293b';
 
     printContainer.innerHTML = `
       <div style="padding: 15px; color: #1e293b; font-family: sans-serif; line-height: 1.5;">
@@ -920,7 +922,8 @@ export async function renderAdmin(container, user, role) {
       </div>
     `;
 
-    document.body.appendChild(printContainer);
+    wrapper.appendChild(printContainer);
+    document.body.appendChild(wrapper);
 
     const opt = {
       margin: [10, 10, 10, 10],
@@ -933,7 +936,7 @@ export async function renderAdmin(container, user, role) {
     try {
       await window.html2pdf().set(opt).from(printContainer).save();
     } finally {
-      document.body.removeChild(printContainer);
+      document.body.removeChild(wrapper);
     }
   };
 
